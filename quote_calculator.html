@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Calcul8 | Quote & Commission Calculator</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 700px;
+      margin: 40px auto;
+      padding: 0 20px;
+      text-align: left;
+    }
+    label {
+      font-weight: bold;
+      margin-top: 15px;
+      display: block;
+    }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      margin-top: 5px;
+      box-sizing: border-box;
+    }
+    input[type="range"] {
+      width: 100%;
+    }
+    button {
+      margin-top: 15px;
+      padding: 10px;
+      background-color: #98c362;
+      color: white;
+      font-weight: bold;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      border-radius: 4px;
+    }
+    button:hover {
+      background-color: #86b04f;
+    }
+    .result {
+      margin-top: 10px;
+      font-weight: bold;
+    }
+    #commissionAmount {
+      color: #2e7d32;
+    }
+    .quote-summary {
+      margin-bottom: 10px;
+      padding: 15px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      background-color: #f9f9f9;
+    }
+    .quote-summary h3 {
+      margin-top: 0;
+    }
+    .quote-summary p {
+      margin: 5px 0;
+    }
+    .bold {
+      font-weight: bold;
+    }
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      .quote-summary, .quote-summary * {
+        visibility: visible;
+      }
+      .quote-summary {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="quote-summary" id="quoteSummary" style="display:none;">
+    <h3>Quote Summary</h3>
+    <p><strong>Contact:</strong> <span id="summaryContact"></span></p>
+    <p><strong>Sales Rep:</strong> <span id="summarySalesRep"></span></p>
+    <p><strong>Date:</strong> <span id="summaryDate"></span></p>
+    <p class="bold"><strong>Quote Expiration:</strong> <span id="summaryExpiration" style="color:red;"></span></p>
+    <p><strong>Shipping Address:</strong> <span id="summaryShippingAddress"></span></p>
+    <p><strong>SKU:</strong> <span id="summarySKU"></span></p>
+    <p><strong>Quantity:</strong> <span id="summaryQty"></span></p>
+    <p><strong>Unit Price:</strong> $<span id="summaryUnitPrice"></span></p>
+    <p><strong>Tax:</strong> $<span id="summaryTax"></span></p>
+    <p id="shippingLine"><strong>Shipping:</strong> $<span id="summaryShipping"></span></p>
+    <p><strong>Total Quote:</strong> $<span id="summaryTotal"></span></p>
+    <p><strong>Comments:</strong> <span id="summaryComments"></span></p>
+  </div>
+
+  <div id="quoteActions" style="display:none;">
+    <button onclick="emailQuote()">Email This Quote</button>
+    <button onclick="window.print()">Print Quote Summary</button>
+  </div>
+
+  <h2>Calcul8: Quote & Commission Calculator</h2>
+  <label>Contact Name</label><input id="contactName" type="text" />
+  <label>Sales Rep Name</label><input id="salesRepName" type="text" />
+  <label>Quote Expiration Date</label><input id="expirationDate" type="date" />
+  <label>Shipping Address</label><textarea id="shippingAddress"></textarea>
+  <label>SKU</label><input id="sku" type="text" />
+  <label>Cost Price per Item ($)</label><input id="cost" type="number" step="0.01" />
+  <label>Markup Percentage: <span id="markupValue">100%</span></label>
+  <input id="markup" type="range" min="0" max="300" value="100" step="0.01" />
+  <label>Calculated/Manual Selling Price per Item ($)</label><input id="selling" type="number" step="0.01" />
+  <label>Quantity</label><input id="quantity" type="number" min="1" step="1" />
+  <label>Shipping Cost ($)</label><input id="shipping" type="number" step="0.01" />
+  <label><input type="checkbox" id="passShipping" checked /> Pass Shipping Cost to Client</label>
+  <label>Tax Rate (%)</label><input id="taxRate" type="number" step="0.01" />
+  <label>Commission % of Profit</label><input id="commissionRate" type="number" step="0.01" />
+  <label>Comments</label><textarea id="comments" rows="3"></textarea>
+  <button onclick="calculate()">Calculate</button>
+  <div class="result" id="quotePrice"></div>
+  <div class="result" id="taxAmount"></div>
+  <div class="result" id="profitAmount"></div>
+  <div class="result" id="commissionAmount"></div>
+
+  <script>
+    let isManualSellingChange = false;
+    const markup = document.getElementById('markup');
+    const selling = document.getElementById('selling');
+    const cost = document.getElementById('cost');
+    const markupValue = document.getElementById('markupValue');
+
+    markup.addEventListener('input', () => updateSelling('slider'));
+    selling.addEventListener('input', () => {
+      isManualSellingChange = true;
+      updateSelling('input');
+      isManualSellingChange = false;
+    });
+
+    function updateSelling(from = 'slider') {
+      const costVal = parseFloat(cost.value) || 0;
+      if (from === 'slider') {
+        const markupVal = parseFloat(markup.value) || 0;
+        const sellPrice = costVal + (costVal * markupVal / 100);
+        selling.value = sellPrice.toFixed(2);
+        markupValue.innerText = `${markupVal.toFixed(2)}%`;
+      } else if (from === 'input' && costVal > 0) {
+        const sellPrice = parseFloat(selling.value) || 0;
+        const markupVal = ((sellPrice - costVal) / costVal) * 100;
+        markup.value = markupVal.toFixed(2);
+        markupValue.innerText = `${markupVal.toFixed(2)}%`;
+      }
+    }
+
+    function calculate() {
+      updateSelling();
+      const get = id => document.getElementById(id).value;
+      const checked = document.getElementById('passShipping').checked;
+      const qty = parseInt(get('quantity')) || 1;
+      const costVal = parseFloat(get('cost')) || 0;
+      const sellVal = parseFloat(get('selling')) || 0;
+      const shipVal = parseFloat(get('shipping')) || 0;
+      const taxRate = parseFloat(get('taxRate')) || 0;
+      const commissionRate = parseFloat(get('commissionRate')) || 0;
+
+      const subtotal = sellVal * qty;
+      const taxAmount = subtotal * (taxRate / 100);
+      const total = subtotal + taxAmount + (checked ? shipVal : 0);
+      const profit = subtotal - (costVal * qty) - (checked ? 0 : shipVal);
+      const commission = profit * (commissionRate / 100);
+
+      const set = (id, val) => document.getElementById(id).innerText = val.toFixed ? val.toFixed(2) : val;
+      set('summaryContact', get('contactName'));
+      set('summarySalesRep', get('salesRepName'));
+      set('summaryDate', new Date().toLocaleDateString());
+      set('summaryExpiration', get('expirationDate'));
+      set('summaryShippingAddress', get('shippingAddress'));
+      set('summarySKU', get('sku'));
+      set('summaryQty', qty);
+      set('summaryUnitPrice', sellVal);
+      set('summaryTax', taxAmount);
+      set('summaryTotal', total);
+      set('summaryComments', get('comments'));
+
+      document.getElementById('summaryShipping').innerText = shipVal.toFixed(2);
+      document.getElementById('shippingLine').style.display = checked ? 'block' : 'none';
+      document.getElementById('quotePrice').innerText = `Total Quote Price: $${total.toFixed(2)}`;
+      document.getElementById('taxAmount').innerText = `Tax Amount: $${taxAmount.toFixed(2)}`;
+      document.getElementById('profitAmount').innerText = `Total Profit: $${profit.toFixed(2)}`;
+      document.getElementById('commissionAmount').innerText = `Estimated Commission: $${commission.toFixed(2)}`;
+      document.getElementById('quoteSummary').style.display = 'block';
+      document.getElementById('quoteActions').style.display = 'block';
+    }
+
+    function emailQuote() {
+      const get = id => document.getElementById(id).innerText;
+      const shippingVisible = document.getElementById('shippingLine').style.display !== 'none';
+      const body = `QUOTE SUMMARY\n\nContact: ${get('summaryContact')}\nSales Rep: ${get('summarySalesRep')}\nDate: ${get('summaryDate')}\nQuote Expiration: ${get('summaryExpiration')}\nShipping Address: ${get('summaryShippingAddress')}\nSKU: ${get('summarySKU')}\n\nQuantity: ${get('summaryQty')}\nUnit Price: $${get('summaryUnitPrice')}\nTax: $${get('summaryTax')}\n${shippingVisible ? `Shipping: $${get('summaryShipping')}\n` : ''}Total Quote: $${get('summaryTotal')}\n\nComments:\n${get('summaryComments')}`;
+      window.location.href = `mailto:?subject=Quote for ${get('summaryContact')}&body=${encodeURIComponent(body)}`;
+    }
+  </script>
+</body>
+</html>
